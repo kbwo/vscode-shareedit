@@ -1,108 +1,150 @@
-import * as vscode from 'vscode';
-import { WebSocket, MessageEvent } from 'ws';
-import { Message, TextContent, CursorPos, SelectionPos } from '../types/messages';
-import { setCursorPosition, selectRange, replaceFileContent } from '../utils/editor';
+import * as vscode from "vscode";
+import { WebSocket, MessageEvent } from "ws";
+import {
+  Message,
+  TextContent,
+  CursorPos,
+  SelectionPos,
+} from "../types/messages";
+import {
+  setCursorPosition,
+  selectRange,
+  replaceFileContent,
+} from "../utils/editor";
+import {
+  lastCursorPosition,
+  updateLastCursorPosition,
+} from "../utils/sharedState";
 
 export class WebSocketHandler {
-    private socket: WebSocket | null = null;
-    private outputChannel: vscode.OutputChannel;
+  private socket: WebSocket | null = null;
+  private outputChannel: vscode.OutputChannel;
 
-    constructor(outputChannel: vscode.OutputChannel) {
-        this.outputChannel = outputChannel;
+  constructor(outputChannel: vscode.OutputChannel) {
+    this.outputChannel = outputChannel;
+  }
+
+  async connect(): Promise<void> {
+    const socketPort = await vscode.window.showInputBox({
+      prompt: "Enter the WebSocket port number",
+    });
+
+    if (!socketPort || !/^\d+$/.test(socketPort)) {
+      vscode.window.showErrorMessage("Port must be a number");
+      return;
     }
 
-    async connect(): Promise<void> {
-        const socketPort = await vscode.window.showInputBox({
-            prompt: 'Enter the port',
-        });
+    this.socket = new WebSocket(`ws://localhost:${socketPort}`);
+    this.setupSocketListeners();
+  }
 
-        if (!socketPort || !/^\d+$/.test(socketPort)) {
-            vscode.window.showErrorMessage('Port must be a number');
-            return;
-        }
+  public disconnect(): void {
+    this.socket?.close();
+    this.socket = null;
+    vscode.window.showInformationMessage(`Disconnected from WebSocket server`);
+  }
 
-        this.socket = new WebSocket(`ws://localhost:${socketPort}`);
-        this.setupSocketListeners();
+  private setupSocketListeners(): void {
+    if (!this.socket) {
+      return;
     }
 
-    private setupSocketListeners(): void {
-        if (!this.socket) {return;}
+    this.socket.onopen = () => {
+      this.outputChannel.appendLine("Connected to server");
+      vscode.window.showInformationMessage(`Connected to WebSocket server`);
+    };
+    this.socket.onclose = () => {
+      this.outputChannel.appendLine("Disconnected from server");
+    };
 
-        this.socket.onopen = () => {
-            this.outputChannel.appendLine('Connected to server');
-        };
+    this.socket.onerror = (error) => {
+      this.outputChannel.appendLine(`Error: ${error}`);
+    };
 
-        this.socket.onclose = () => {
-            this.outputChannel.appendLine('Disconnected from server');
-        };
+    this.socket.addEventListener("message", this.handleMessage.bind(this));
+  }
 
-        this.socket.onerror = (error) => {
-            this.outputChannel.appendLine(`Error: ${error}`);
-        };
+  private async handleMessage(ev: MessageEvent): Promise<void> {
+    const message = JSON.parse(ev.data.toString()) as Message;
+    this.outputChannel.appendLine(`message ${JSON.stringify(message)}`);
 
-        this.socket.addEventListener('message', this.handleMessage.bind(this));
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      return;
     }
 
-    private async handleMessage(ev: MessageEvent): Promise<void> {
-        const message = JSON.parse(ev.data.toString()) as Message;
-        this.outputChannel.appendLine(`message ${JSON.stringify(message)}`);
+    switch (message.type) {
+      case "TextContent":
+        await this.handleTextContent(message, editor);
+        break;
+      case "CursorPos":
+        await this.handleCursorPos(message);
+        break;
+      case "SelectionPos":
+        await this.handleSelectionPos(message, editor);
+        break;
+    }
+  }
 
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {return;}
+  private async handleTextContent(
+    message: TextContent,
+    editor: vscode.TextEditor,
+  ): Promise<void> {
+    if (message.path === editor.document.uri.fsPath) {
+      replaceFileContent(message.text);
+      setCursorPosition(message.cursorLine, message.cursorCol);
+    }
+  }
 
-        switch (message.type) {
-            case 'TextContent':
-                await this.handleTextContent(message, editor);
-                break;
-            case 'CursorPos':
-                await this.handleCursorPos(message);
-                break;
-            case 'SelectionPos':
-                await this.handleSelectionPos(message, editor);
-                break;
-        }
+  private async handleCursorPos(message: CursorPos): Promise<void> {
+    this.outputChannel.appendLine(
+      `${message.sender} ${message.path} ${message.line} ${message.col}`,
+    );
+
+    if (
+      lastCursorPosition &&
+      lastCursorPosition.line === message.line &&
+      lastCursorPosition.col === message.col
+    ) {
+      return; // Do not move if the position hasn't changed
     }
 
-    private async handleTextContent(message: TextContent, editor: vscode.TextEditor): Promise<void> {
-        if (message.path === editor.document.uri.fsPath) {
-            replaceFileContent(message.text);
-            setCursorPosition(message.cursorLine, message.cursorCol);
-        }
+    updateLastCursorPosition(message.line, message.col); // Update last position
+
+    const document = await vscode.workspace.openTextDocument(message.path);
+    await vscode.window.showTextDocument(document);
+    setCursorPosition(message.line, message.col);
+  }
+
+  private async handleSelectionPos(
+    message: SelectionPos,
+    editor: vscode.TextEditor,
+  ): Promise<void> {
+    if (message.path === editor.document.uri.fsPath) {
+      selectRange(
+        message.startLine - 1,
+        message.startCol - 1,
+        message.endLine - 1,
+        message.endCol - 1,
+      );
+    }
+  }
+
+  public sendMessage(message: Message): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      vscode.window.showErrorMessage(
+        `Not connected, status: ${this.socket?.readyState}`,
+      );
+      this.socket?.close();
+      this.socket = null;
+      return;
     }
 
-    private async handleCursorPos(message: CursorPos): Promise<void> {
-        this.outputChannel.appendLine(
-            `${message.sender} ${message.path} ${message.line} ${message.col}`,
-        );
-        const document = await vscode.workspace.openTextDocument(message.path);
-        const editor = await vscode.window.showTextDocument(document);
-        setCursorPosition(message.line, message.col);
-    }
+    this.socket.send(JSON.stringify(message));
+  }
 
-    private async handleSelectionPos(message: SelectionPos, editor: vscode.TextEditor): Promise<void> {
-        if (message.path === editor.document.uri.fsPath) {
-            selectRange(
-                message.startLine - 1,
-                message.startCol - 1,
-                message.endLine - 1,
-                message.endCol - 1,
-            );
-        }
-    }
-
-    public sendMessage(message: Message): void {
-        if (this.socket?.readyState !== WebSocket.OPEN) {
-            vscode.window.showErrorMessage(`Not connected, status: ${this.socket?.readyState}`);
-            this.socket?.close();
-            this.socket = null;
-            return;
-        }
-
-        this.socket.send(JSON.stringify(message));
-    }
-
-    public close(): void {
-        this.socket?.close();
-        this.socket = null;
-    }
-} 
+  public close(): void {
+    this.socket?.close();
+    this.socket = null;
+  }
+}

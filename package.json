@@ -21,6 +21,10 @@
       {
         "command": "shareedit.connect",
         "title": "Connect to vim-shareedit"
+      },
+      {
+        "command": "shareedit.disconnect",
+        "title": "Disconnect from vim-shareedit"
       }
     ]
   },
@@ -50,6 +54,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "debounce": "^2.2.0",
     "ws": "^8.18.0"
   }
 }

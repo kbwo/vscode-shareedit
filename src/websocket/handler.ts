@@ -103,6 +103,8 @@ export class WebSocketHandler {
     this.outputChannel.appendLine(
       `${message.sender} ${message.path} ${message.line} ${message.col}`,
     );
+    const document = await vscode.workspace.openTextDocument(message.path);
+    await vscode.window.showTextDocument(document);
 
     const newCursorPos = { line: message.line, col: message.col };
     let cursorPos: { line: number; col: number } = newCursorPos;
@@ -120,16 +122,15 @@ export class WebSocketHandler {
 
     if (
       lastCursorPosition &&
+      lastCursorPosition.path === message.path &&
       lastCursorPosition.line === cursorPos.line &&
       lastCursorPosition.col === cursorPos.col
     ) {
       return;
     }
 
-    updateLastCursorPosition(message.line, message.col); // Update last position
+    updateLastCursorPosition(message.path, message.line, message.col); // Update last position
 
-    const document = await vscode.workspace.openTextDocument(message.path);
-    await vscode.window.showTextDocument(document);
     setCursorPosition(message.line, message.col);
   }
 

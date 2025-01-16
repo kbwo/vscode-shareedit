@@ -35,21 +35,33 @@ export function selectRange(
 }
 
 export function getCursorPosition(): {
+  path: string;
   line: number;
   col: number;
 } {
   const editor = vscode.window.activeTextEditor;
+  const filePath = editor ? editor.document.uri.fsPath : "";
   if (!editor) {
     return {
+      path: filePath,
       line: 1,
       col: 1,
     };
   }
   const position = editor.selection.active;
   return {
+    path: filePath,
     line: position.line + 1,
     col: position.character + 1,
   };
+}
+
+export function getFilePath(): string {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return "";
+  }
+  return editor.document.uri.fsPath;
 }
 
 export function replaceFileContent(newContent: string): void {

@@ -23,7 +23,7 @@ async function createDirectoryWithMessage() {
 const debouncedSendCursorPos = debounce(
   (
     document: vscode.TextDocument,
-    cursorPosition: { line: number; col: number },
+    cursorPosition: ReturnType<typeof getCursorPosition>,
   ) => {
     if (
       lastCursorPosition &&
@@ -33,7 +33,11 @@ const debouncedSendCursorPos = debounce(
       return; // Do not send if the position hasn't changed
     }
 
-    updateLastCursorPosition(cursorPosition.line, cursorPosition.col); // Update last position
+    updateLastCursorPosition(
+      cursorPosition.path,
+      cursorPosition.line,
+      cursorPosition.col,
+    ); // Update last position
 
     const cursorPos: CursorPos = {
       type: "CursorPos",
@@ -44,7 +48,7 @@ const debouncedSendCursorPos = debounce(
     };
     wsHandler.sendMessage(cursorPos);
   },
-  100,
+  50,
 );
 
 export function activate(context: vscode.ExtensionContext) {

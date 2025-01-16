@@ -1,5 +1,13 @@
-export let lastCursorPosition: { line: number; col: number } | null = null;
+export let lastCursorPosition: {
+  path: string;
+  line: number;
+  col: number;
+} | null = null;
 
-export function updateLastCursorPosition(line: number, col: number): void {
-  lastCursorPosition = { line, col };
-} 
+export function updateLastCursorPosition(
+  path: string,
+  line: number,
+  col: number,
+): void {
+  lastCursorPosition = { path, line, col };
+}

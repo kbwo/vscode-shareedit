@@ -65,7 +65,6 @@ export function activate(context: vscode.ExtensionContext) {
     const selection = event.selections[0]; // Get the primary selection
     const isEmpty = selection.isEmpty;
 
-    // TODO
     if (isEmpty) {
       const cursorPosition = getCursorPosition();
       debouncedSendCursorPos(document, cursorPosition);

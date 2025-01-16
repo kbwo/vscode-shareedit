@@ -78,7 +78,7 @@ export class WebSocketHandler {
         await this.handleTextContent(message, editor);
         break;
       case "CursorPos":
-        await this.handleCursorPos(message);
+        await this.handleCursorPos(message, editor);
         break;
       case "SelectionPos":
         await this.handleSelectionPos(message, editor);
@@ -96,17 +96,34 @@ export class WebSocketHandler {
     }
   }
 
-  private async handleCursorPos(message: CursorPos): Promise<void> {
+  private async handleCursorPos(
+    message: CursorPos,
+    editor: vscode.TextEditor,
+  ): Promise<void> {
     this.outputChannel.appendLine(
       `${message.sender} ${message.path} ${message.line} ${message.col}`,
     );
 
+    const newCursorPos = { line: message.line, col: message.col };
+    let cursorPos: { line: number; col: number } = newCursorPos;
+    const currentLine = editor.selection.active.line;
+    const currentCol = editor.selection.active.character;
+    const lastLine = editor.document.lineCount - 1;
+    const lastColOfNewLine = editor.document.lineAt(newCursorPos.line).text
+      .length;
+
+    if (lastLine < newCursorPos.line || lastColOfNewLine < newCursorPos.col) {
+      cursorPos = { line: currentLine, col: currentCol };
+    } else {
+      cursorPos = { line: newCursorPos.line, col: newCursorPos.col };
+    }
+
     if (
       lastCursorPosition &&
-      lastCursorPosition.line === message.line &&
-      lastCursorPosition.col === message.col
+      lastCursorPosition.line === cursorPos.line &&
+      lastCursorPosition.col === cursorPos.col
     ) {
-      return; // Do not move if the position hasn't changed
+      return;
     }
 
     updateLastCursorPosition(message.line, message.col); // Update last position

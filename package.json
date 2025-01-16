@@ -2,11 +2,11 @@
   "name": "shareedit",
   "displayName": "Share Edit",
   "description": "Collaborative editing with Vim",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "kbwo",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kbwo/vim-shareedit.git"
+    "url": "https://github.com/kbwo/vscode-shareedit"
   },
   "engines": {
     "vscode": "^1.90.0"

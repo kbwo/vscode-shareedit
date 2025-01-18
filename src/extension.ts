@@ -12,13 +12,6 @@ import {
 let wsHandler: WebSocketHandler;
 let outputChannel: vscode.OutputChannel;
 
-async function createDirectoryWithMessage() {
-  const directoryPath = `/tmp/${generateRandomString()}`;
-  fs.mkdirSync(directoryPath);
-  vscode.window.showInformationMessage(`Directory created: ${directoryPath}`);
-  await vscode.env.clipboard.writeText(directoryPath);
-}
-
 // Create a debounced version of the cursor position sender
 const debouncedSendCursorPos = debounce(
   (
@@ -27,6 +20,7 @@ const debouncedSendCursorPos = debounce(
   ) => {
     if (
       lastCursorPosition &&
+      lastCursorPosition.path === cursorPosition.path &&
       lastCursorPosition.line === cursorPosition.line &&
       lastCursorPosition.col === cursorPosition.col
     ) {

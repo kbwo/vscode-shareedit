@@ -116,8 +116,6 @@ export class WebSocketHandler {
 
     if (lastLine < newCursorPos.line || lastColOfNewLine < newCursorPos.col) {
       cursorPos = { line: currentLine, col: currentCol };
-    } else {
-      cursorPos = { line: newCursorPos.line, col: newCursorPos.col };
     }
 
     if (

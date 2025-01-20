@@ -62,6 +62,13 @@ export function activate(context: vscode.ExtensionContext) {
     const document = event.textEditor.document;
     const selection = event.selections[0]; // Get the primary selection
     const isEmpty = selection.isEmpty;
+    const isFocused =
+      vscode.window.state.focused === true &&
+      vscode.window.activeTextEditor === event.textEditor;
+
+    if (!isFocused) {
+      return;
+    }
 
     if (isEmpty) {
       const cursorPosition = getCursorPosition();

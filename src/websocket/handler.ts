@@ -10,6 +10,8 @@ import {
   setCursorPosition,
   selectRange,
   replaceFileContent,
+  setCenterLine,
+  isVSCodeFocused,
 } from "../utils/editor";
 import {
   lastCursorPosition,
@@ -100,34 +102,55 @@ export class WebSocketHandler {
     message: CursorPos,
     editor: vscode.TextEditor,
   ): Promise<void> {
+    if (isVSCodeFocused()) {
+      return;
+    }
     this.outputChannel.appendLine(
       `${message.sender} ${message.path} ${message.line} ${message.col}`,
     );
     const document = await vscode.workspace.openTextDocument(message.path);
     await vscode.window.showTextDocument(document);
 
-    const newCursorPos = { line: message.line, col: message.col };
-    let cursorPos: { line: number; col: number } = newCursorPos;
+    let newCursorPos: Pick<CursorPos, "path" | "line" | "col" | "centerLine"> =
+      { ...message };
     const currentLine = editor.selection.active.line;
     const currentCol = editor.selection.active.character;
     const lastLine = editor.document.lineCount - 1;
     const lastColOfNewLine = editor.document.lineAt(newCursorPos.line).text
       .length;
+    const currentPath = editor.document.uri.fsPath;
 
-    if (lastLine < newCursorPos.line || lastColOfNewLine < newCursorPos.col) {
-      cursorPos = { line: currentLine, col: currentCol };
+    if (
+      currentPath === message.path &&
+      (lastLine < newCursorPos.line || lastColOfNewLine < newCursorPos.col)
+    ) {
+      newCursorPos = {
+        path: currentPath,
+        line: currentLine,
+        col: currentCol,
+        centerLine: newCursorPos.centerLine,
+      };
     }
 
     if (
       lastCursorPosition &&
-      lastCursorPosition.path === message.path &&
-      lastCursorPosition.line === cursorPos.line &&
-      lastCursorPosition.col === cursorPos.col
+      lastCursorPosition.path === newCursorPos.path &&
+      lastCursorPosition.line === newCursorPos.line &&
+      lastCursorPosition.col === newCursorPos.col
     ) {
       return;
     }
 
-    updateLastCursorPosition(message.path, message.line, message.col); // Update last position
+    if (message.centerLine) {
+      setCenterLine(message.centerLine);
+    }
+
+    updateLastCursorPosition(
+      newCursorPos.path,
+      newCursorPos.line,
+      newCursorPos.col,
+      newCursorPos.centerLine,
+    );
 
     setCursorPosition(message.line, message.col);
   }

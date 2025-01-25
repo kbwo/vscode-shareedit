@@ -13,6 +13,7 @@ export type CursorPos = {
   path: string;
   line: number;
   col: number;
+  centerLine: number | null;
 };
 
 export type SelectionPos = {

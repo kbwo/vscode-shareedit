@@ -7,6 +7,27 @@ export function generateRandomString(): string {
   );
 }
 
+export function getCenterLine(): number | null {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return null;
+  }
+  const visibleStartLine = editor.visibleRanges[0].start.line;
+  const visibleEndLine = editor.visibleRanges[0].end.line;
+  return Math.floor((visibleStartLine + visibleEndLine) / 2);
+}
+
+export function setCenterLine(centerLine: number): void {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+  editor.revealRange(
+    new vscode.Range(centerLine, 0, centerLine, 0),
+    vscode.TextEditorRevealType.InCenter,
+  );
+}
+
 export function setCursorPosition(vimLine: number, vimCol: number): void {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
@@ -77,4 +98,10 @@ export function replaceFileContent(newContent: string): void {
       editBuilder.replace(fullRange, newContent);
     });
   }
+}
+export function isVSCodeFocused() {
+  return (
+    vscode.window.state.focused === true &&
+    vscode.window.activeTextEditor !== undefined
+  );
 }

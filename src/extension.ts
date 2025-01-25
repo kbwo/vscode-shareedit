@@ -1,13 +1,12 @@
 import * as vscode from "vscode";
-import * as fs from "fs";
 import { WebSocketHandler } from "./websocket/handler";
-import { CursorPos, SelectionPos, TextContent } from "./types/messages";
-import { generateRandomString, getCursorPosition } from "./utils/editor";
+import { CursorPos } from "./types/messages";
 import debounce from "debounce";
 import {
   lastCursorPosition,
   updateLastCursorPosition,
 } from "./utils/sharedState";
+import { getCenterLine, getCursorPosition } from "./utils/editor";
 
 let wsHandler: WebSocketHandler;
 let outputChannel: vscode.OutputChannel;
@@ -17,12 +16,14 @@ const debouncedSendCursorPos = debounce(
   (
     document: vscode.TextDocument,
     cursorPosition: ReturnType<typeof getCursorPosition>,
+    centerLine: number | null,
   ) => {
     if (
       lastCursorPosition &&
       lastCursorPosition.path === cursorPosition.path &&
       lastCursorPosition.line === cursorPosition.line &&
-      lastCursorPosition.col === cursorPosition.col
+      lastCursorPosition.col === cursorPosition.col &&
+      lastCursorPosition.centerLine === centerLine
     ) {
       return; // Do not send if the position hasn't changed
     }
@@ -31,7 +32,8 @@ const debouncedSendCursorPos = debounce(
       cursorPosition.path,
       cursorPosition.line,
       cursorPosition.col,
-    ); // Update last position
+      centerLine,
+    );
 
     const cursorPos: CursorPos = {
       type: "CursorPos",
@@ -39,6 +41,7 @@ const debouncedSendCursorPos = debounce(
       path: document.uri.fsPath,
       line: cursorPosition.line,
       col: cursorPosition.col,
+      centerLine,
     };
     wsHandler.sendMessage(cursorPos);
   },
@@ -58,6 +61,23 @@ export function activate(context: vscode.ExtensionContext) {
     () => wsHandler.disconnect(),
   );
 
+  // Watch changes in visible range
+  vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+    if (!event.textEditor.document || !vscode.window.state.focused) {
+      return;
+    }
+
+    const centerLine = getCenterLine();
+    console.warn("DEBUGPRINT[24]: extension.ts:69: centerLine=", centerLine);
+
+    const cursorPosition = getCursorPosition();
+    debouncedSendCursorPos(
+      event.textEditor.document,
+      cursorPosition,
+      centerLine,
+    );
+  });
+
   vscode.window.onDidChangeTextEditorSelection((event) => {
     const document = event.textEditor.document;
     const selection = event.selections[0]; // Get the primary selection
@@ -69,10 +89,11 @@ export function activate(context: vscode.ExtensionContext) {
     if (!isFocused) {
       return;
     }
+    const centerLine = getCenterLine();
 
     if (isEmpty) {
       const cursorPosition = getCursorPosition();
-      debouncedSendCursorPos(document, cursorPosition);
+      debouncedSendCursorPos(document, cursorPosition, centerLine);
     } else {
       // TODO
       // const selectionPos: SelectionPos = {

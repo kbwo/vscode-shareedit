@@ -15,6 +15,7 @@ import {
   lastCursorPosition,
   updateLastCursorPosition,
 } from "../utils/sharedState";
+import { showSessionSelector } from "./session";
 
 export class WebSocketHandler {
   private socket: WebSocket | null = null;
@@ -25,16 +26,13 @@ export class WebSocketHandler {
   }
 
   async connect(): Promise<void> {
-    const socketPort = await vscode.window.showInputBox({
-      prompt: "Enter the WebSocket port number",
-    });
+    const selectedPort = await showSessionSelector();
 
-    if (!socketPort || !/^\d+$/.test(socketPort)) {
-      vscode.window.showErrorMessage("Port must be a number");
+    if (!selectedPort) {
       return;
     }
 
-    this.socket = new WebSocket(`ws://localhost:${socketPort}`);
+    this.socket = new WebSocket(`ws://localhost:${selectedPort}`);
     this.setupSocketListeners();
   }
 
@@ -147,6 +145,9 @@ export class WebSocketHandler {
   }
 
   public sendMessage(message: Message): void {
+    if (!this.socket) {
+      return;
+    }
     if (this.socket?.readyState !== WebSocket.OPEN) {
       vscode.window.showErrorMessage(
         `Not connected, status: ${this.socket?.readyState}`,

@@ -2,7 +2,7 @@
   "name": "shareedit",
   "displayName": "Share Edit",
   "description": "Collaborative editing with Vim",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "kbwo",
   "repository": {
     "type": "git",

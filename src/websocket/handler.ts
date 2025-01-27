@@ -32,6 +32,10 @@ export class WebSocketHandler {
       return;
     }
 
+    if (this.socket) {
+      this.disconnect();
+    }
+
     this.socket = new WebSocket(`ws://localhost:${selectedPort}`);
     this.setupSocketListeners();
   }

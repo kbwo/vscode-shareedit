@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
 
+export function isFocused(): boolean {
+  return vscode.window.state.focused;
+}
+
 export function generateRandomString(): string {
   return (
     Math.random().toString(36).substring(2, 15) +

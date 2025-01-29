@@ -10,6 +10,7 @@ import {
   setCursorPosition,
   selectRange,
   replaceFileContent,
+  isFocused,
 } from "../utils/editor";
 import {
   lastCursorPosition,
@@ -105,6 +106,9 @@ export class WebSocketHandler {
     this.outputChannel.appendLine(
       `${message.sender} ${message.path} ${message.line} ${message.col}`,
     );
+    if (isFocused()) {
+      return;
+    }
     const document = await vscode.workspace.openTextDocument(message.path);
     await vscode.window.showTextDocument(document);
 

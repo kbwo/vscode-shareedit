@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { WebSocketHandler } from "./websocket/handler";
 import { CursorPos, SelectionPos } from "./types/messages";
-import { getCursorPosition } from "./utils/editor";
+import { getCursorPosition, isFocused } from "./utils/editor";
 import debounce from "debounce";
 import {
   lastCursorPosition,
@@ -61,11 +61,10 @@ export function activate(context: vscode.ExtensionContext) {
     const document = event.textEditor.document;
     const selection = event.selections[0]; // Get the primary selection
     const isEmpty = selection.isEmpty;
-    const isFocused =
-      vscode.window.state.focused === true &&
-      vscode.window.activeTextEditor === event.textEditor;
+    const isActive =
+      isFocused() && vscode.window.activeTextEditor === event.textEditor;
 
-    if (!isFocused) {
+    if (!isActive) {
       return;
     }
 

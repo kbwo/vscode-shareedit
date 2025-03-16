@@ -33,6 +33,28 @@ export async function getSessions(): Promise<SessionInfo[]> {
   }
 }
 
+function formatDirectoryPath(directory: string): string {
+  const parts = directory.split("/");
+  const formattedPath = parts
+    .map((part, index) => {
+      // Keep last 3 segments as is
+      if (index >= parts.length - 3) {
+        return part;
+      }
+      // Take first letter of other segments
+      return part.charAt(0);
+    })
+    .join("/");
+
+  // If path is longer than 60 characters, abbreviate it
+  if (formattedPath.length > 60) {
+    const lastThreeParts = parts.slice(-3).join("/");
+    return `(...)/${lastThreeParts}`;
+  }
+
+  return formattedPath;
+}
+
 /**
  * @returns port number or undefined
  */
@@ -63,9 +85,11 @@ export async function showSessionSelector(): Promise<number | undefined> {
     .map((session) => {
       const date = new Date(session.timestamp);
       const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+      const formattedPath = formatDirectoryPath(session.directory);
+
       return {
-        label: `Port ${session.port}`,
-        description: `${session.directory} (${formattedDate})`,
+        label: `${formattedPath} (${formattedDate})`,
+        description: `Port ${session.port}`,
         port: session.port,
       };
     });
